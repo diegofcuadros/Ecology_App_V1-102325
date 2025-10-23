@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  role          Role
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  uploadedArticles Article[]      @relation("UploadedBy")
+  assignments      Assignment[]
+  chatSessions     ChatSession[]
+  gradesGiven      Grade[]
+
+  @@map("users")
+}
+
+enum Role {
+  student
+  professor
+}
+
+model Article {
+  id                  String   @id @default(uuid())
+  title               String
+  author              String?
+  year                Int?
+  content             String
+  learningObjectives  Json     @map("learning_objectives")
+  keyConcepts         Json     @map("key_concepts")
+  uploadedById        String?  @map("uploaded_by")
+  isPublic            Boolean  @default(true) @map("is_public")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  // Relations
+  uploadedBy   User?        @relation("UploadedBy", fields: [uploadedById], references: [id])
+  assignments  Assignment[]
+
+  @@map("articles")
+}
+
+model Assignment {
+  id             String    @id @default(uuid())
+  professorId    String    @map("professor_id")
+  articleId      String    @map("article_id")
+  title          String
+  description    String?
+  dueDate        DateTime? @map("due_date")
+  gradingRubric  Json?     @map("grading_rubric")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  professor    User          @relation(fields: [professorId], references: [id])
+  article      Article       @relation(fields: [articleId], references: [id])
+  chatSessions ChatSession[]
+
+  @@map("assignments")
+}
+
+model ChatSession {
+  id               String   @id @default(uuid())
+  studentId        String   @map("student_id")
+  assignmentId     String   @map("assignment_id")
+  currentStage     String   @default("Comprehension") @map("current_stage")
+  userMessageCount Int      @default(0) @map("user_message_count")
+  startedAt        DateTime @default(now()) @map("started_at")
+  lastActivityAt   DateTime @default(now()) @map("last_activity_at")
+
+  // Relations
+  student    User      @relation(fields: [studentId], references: [id])
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  messages   Message[]
+  grade      Grade?
+
+  @@unique([studentId, assignmentId])
+  @@map("chat_sessions")
+}
+
+model Message {
+  id            String   @id @default(uuid())
+  chatSessionId String   @map("chat_session_id")
+  sender        Sender
+  text          String
+  sources       Json?
+  messageOrder  Int      @map("message_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  chatSession ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+enum Sender {
+  user
+  ai
+}
+
+model Grade {
+  id            String   @id @default(uuid())
+  chatSessionId String   @unique @map("chat_session_id")
+  professorId   String   @map("professor_id")
+  rubricScores  Json?    @map("rubric_scores")
+  overallScore  Decimal? @map("overall_score") @db.Decimal(5, 2)
+  feedback      String?
+  gradedAt      DateTime @default(now()) @map("graded_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  chatSession ChatSession @relation(fields: [chatSessionId], references: [id])
+  professor   User        @relation(fields: [professorId], references: [id])
+
+  @@map("grades")
+}
