@@ -1,112 +1,101 @@
-
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { startChatSession, sendMessage } from '../services/geminiService';
-import type { Article, Message, LearningStage, Source } from '../types';
+import { useState, useCallback, useEffect } from 'react';
+import { getMessagesForStudySet, addMessage, getAiResponse } from '../services/supabaseService';
+import type { Message, StudySet } from '../types';
 import { Sender } from '../types';
-import { STAGE_DESCRIPTIONS } from '../constants';
-import type { Chat } from '@google/genai';
 
-/**
- * A custom hook to manage the entire state and logic of the chat application.
- * This includes handling article selection, sending messages, and progressing through learning stages.
- */
-export function useChat() {
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+export function useChat(studySet: StudySet | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [currentStage, setCurrentStage] = useState<LearningStage>('Comprehension');
-  const [userMessageCount, setUserMessageCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  const chatRef = useRef<Chat | null>(null);
-
-  /**
-   * Initializes a new chat session when an article is selected.
-   */
-  const handleSelectArticle = useCallback((article: Article) => {
-    setSelectedArticle(article);
-    chatRef.current = startChatSession(article);
-    setMessages([
-      {
-        sender: Sender.AI,
-        text: `Hello! I'm Eco, your guide for discussing "${article.title}". I'm here to help you explore the key concepts. What are your initial thoughts after reading the abstract?`,
-      },
-    ]);
-    setUserMessageCount(0);
-    setCurrentStage('Comprehension');
-  }, []);
-
-  /**
-   * Resets the entire chat state to the initial welcome screen.
-   */
-  const resetChat = useCallback(() => {
-    setSelectedArticle(null);
-    setMessages([]);
-    chatRef.current = null;
-    setUserMessageCount(0);
-    setCurrentStage('Comprehension');
-  }, []);
-  
-  // Effect to automatically advance the learning stage after every 3 user messages.
   useEffect(() => {
-    if (userMessageCount > 0 && userMessageCount % 3 === 0 && selectedArticle) {
-      const stages: LearningStage[] = ['Comprehension', 'Evidence', 'Analysis', 'Advanced'];
-      const currentIndex = stages.indexOf(currentStage);
-      
-      if (currentIndex < stages.length - 1) {
-        const nextStage = stages[currentIndex + 1];
-        setCurrentStage(nextStage);
-        setMessages(prev => [
-          ...prev, 
-          {
-            sender: Sender.AI,
-            text: `Great progress! Let's move to the next stage: **${STAGE_DESCRIPTIONS[nextStage].title}**. ${STAGE_DESCRIPTIONS[nextStage].prompt}`
-          }
-        ]);
-      }
+    if (!studySet) {
+      setMessages([]);
+      return;
     }
-  }, [userMessageCount, currentStage, selectedArticle]);
 
-  /**
-   * Handles sending a user message to the backend and updating the chat history.
-   */
+    const fetchMessages = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const initialMessages = await getMessagesForStudySet(studySet.id);
+        
+        if (initialMessages.length === 0) {
+          // If no history, create the initial AI welcome message
+          const firstQuestion = studySet.assignment.questions[0] || "the first topic in your assignment";
+          const aiWelcomeMessage: Omit<Message, 'id' | 'created_at'> = {
+            study_set_id: studySet.id,
+            sender: Sender.AI,
+            text: `Hello! I see you're ready to work on the assignment for "${studySet.article_title}".\n\nLet's start with the first question: **"${firstQuestion}"**\n\nWhere in the article do you think we should look to start answering this?`,
+          };
+          const savedMessage = await addMessage(aiWelcomeMessage);
+          setMessages([savedMessage]);
+        } else {
+          setMessages(initialMessages);
+        }
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+        setError("Could not load chat history. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMessages();
+  }, [studySet]);
+
   const handleSendMessage = useCallback(async (text: string) => {
-    if (!selectedArticle || !chatRef.current) return;
+    if (!studySet) return;
 
-    const userMessage: Message = { sender: Sender.User, text };
-    setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
-    
-    try {
-      setUserMessageCount(prev => prev + 1);
-      const { text: aiResponse, sources } = await sendMessage(chatRef.current, text, currentStage);
-      
-      const aiMessage: Message = {
-        sender: Sender.AI,
-        text: aiResponse,
-        // Map the raw grounding chunks to the simplified Source type for the UI
-        sources: sources?.map(chunk => chunk.web).filter(Boolean)
-      };
+    setError(null);
 
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      console.error('Error sending message:', error);
+    // 1. Add user message to state and DB
+    const userMessageData: Omit<Message, 'id' | 'created_at'> = {
+      study_set_id: studySet.id,
+      sender: Sender.User,
+      text,
+    };
+    // Optimistically update UI
+    setMessages(prev => [...prev, { ...userMessageData, id: `temp-${Date.now()}` }]);
+    const savedUserMessage = await addMessage(userMessageData);
+    // Replace temp message with real one from DB
+    setMessages(prev => prev.map(m => m.id === `temp-${Date.now()}` ? savedUserMessage : m));
+
+
+    // 2. Get AI response from secure Edge Function
+    try {
+        const currentHistory = [...messages, savedUserMessage];
+        const { text: aiResponse, sources } = await getAiResponse(studySet, currentHistory);
+
+        // 3. Add AI message to state and DB
+        const aiMessageData: Omit<Message, 'id' | 'created_at'> = {
+            study_set_id: studySet.id,
+            sender: Sender.AI,
+            text: aiResponse,
+            sources: sources?.map(chunk => chunk.web).filter(Boolean),
+        };
+        const savedAiMessage = await addMessage(aiMessageData);
+        setMessages(prev => [...prev, savedAiMessage]);
+
+    } catch (err) {
+      console.error('Error getting AI response:', err);
       const errorMessage: Message = {
+        study_set_id: studySet.id,
         sender: Sender.AI,
         text: 'Sorry, I encountered an error. Please try again.',
       };
       setMessages(prev => [...prev, errorMessage]);
+      setError("Failed to get a response from the AI assistant.");
     } finally {
       setIsLoading(false);
     }
-  }, [selectedArticle, currentStage]);
+  }, [studySet, messages]);
 
   return {
-    selectedArticle,
     messages,
     isLoading,
-    currentStage,
-    handleSelectArticle,
+    error,
     handleSendMessage,
-    resetChat,
   };
 }

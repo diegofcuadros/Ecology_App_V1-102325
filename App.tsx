@@ -1,107 +1,39 @@
-
-import React, { useState } from 'react';
-import { Sidebar } from './components/Sidebar';
-import { ArticleViewer } from './components/ArticleViewer';
-import { ChatWindow } from './components/ChatWindow';
-import { WelcomeScreen } from './components/WelcomeScreen';
-import { useChat } from './hooks/useChat';
-import { ARTICLES } from './constants';
-import { processUploadedArticle } from './services/geminiService';
-import type { Article } from './types';
+import React from 'react';
+import { useAuth } from './contexts/AuthContext';
+import AuthPage from './pages/AuthPage';
+import StudentDashboard from './pages/StudentDashboard';
+import ProfessorDashboard from './pages/ProfessorDashboard';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set the workerSrc for pdfjs-dist
+// Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
 
-
 const App: React.FC = () => {
-  const [articles, setArticles] = useState<Article[]>(ARTICLES);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const { session, profile, loading } = useAuth();
 
-  const {
-    selectedArticle,
-    messages,
-    isLoading,
-    currentStage,
-    handleSelectArticle,
-    handleSendMessage,
-    resetChat,
-  } = useChat();
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="h-12 w-12 border-4 border-current border-t-transparent rounded-full animate-spin text-green-500"></div>
+      </div>
+    );
+  }
 
-  const handleFileUpload = async (file: File) => {
-    if (!file || file.type !== 'application/pdf') {
-        setUploadError('Please upload a valid .pdf file.');
-        // Clear the error after a few seconds
-        setTimeout(() => setUploadError(null), 5000);
-        return;
-    }
-    setIsUploading(true);
-    setUploadError(null);
+  if (!session || !profile) {
+    return <AuthPage />;
+  }
 
-    try {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-        let fullText = '';
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map(item => ('str' in item ? item.str : '')).join(' ');
-            fullText += pageText + '\n\n';
-        }
+  if (profile.role === 'student') {
+    return <StudentDashboard />;
+  }
 
-        // Use Gemini to process the text and get structured metadata
-        const metadata = await processUploadedArticle(fullText);
-        
-        const newArticle: Article = {
-            id: `uploaded-${Date.now()}`,
-            content: fullText,
-            ...metadata
-        };
-        
-        // Add the new article to the top of the list and select it
-        setArticles(prev => [newArticle, ...prev]);
-        handleSelectArticle(newArticle);
-
-    } catch (error) {
-        console.error("PDF parsing or API error:", error);
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred while processing the PDF.';
-        setUploadError(errorMessage);
-        // Clear the error after a few seconds
-        setTimeout(() => setUploadError(null), 5000);
-    } finally {
-        setIsUploading(false);
-    }
-  };
-
+  if (profile.role === 'professor') {
+    return <ProfessorDashboard />;
+  }
 
   return (
-    <div className="flex h-screen font-sans text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800">
-      <Sidebar 
-        articles={articles} 
-        selectedArticle={selectedArticle} 
-        onSelectArticle={handleSelectArticle}
-        currentStage={currentStage}
-        onReset={resetChat}
-        onFileUpload={handleFileUpload}
-        isUploading={isUploading}
-        uploadError={uploadError}
-      />
-      <main className="flex-1 flex flex-col h-screen">
-        {selectedArticle ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-hidden">
-            <ChatWindow
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              isLoading={isLoading}
-              articleTitle={selectedArticle.title}
-            />
-            <ArticleViewer article={selectedArticle} />
-          </div>
-        ) : (
-          <WelcomeScreen />
-        )}
-      </main>
+    <div className="flex items-center justify-center h-screen bg-red-100 text-red-800">
+      <p>Error: User has an invalid role.</p>
     </div>
   );
 };

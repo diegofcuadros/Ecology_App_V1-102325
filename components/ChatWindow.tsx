@@ -2,23 +2,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Message } from '../types';
 import { Sender } from '../types';
-import { UserIcon, SparklesIcon, PaperAirplaneIcon, LinkIcon } from './Icons';
+import { UserIcon, SparklesIcon, PaperAirplaneIcon, LinkIcon, MenuIcon } from './Icons';
 
 interface ChatWindowProps {
   messages: Message[];
   onSendMessage: (text: string) => void;
   isLoading: boolean;
   articleTitle: string;
+  onMenuClick: () => void;
 }
 
 const ChatMessage: React.FC<{ message: Message }> = ({ message }) => {
     const isUser = message.sender === Sender.User;
-    // A simple markdown-to-html renderer for bold text
     const renderText = (text: string) => {
-        const parts = text.split(/(\*\*.*?\*\*)/g);
+        const parts = text.split(/(\*\*.*?\*\*|\n)/g);
         return parts.map((part, i) => {
             if (part.startsWith('**') && part.endsWith('**')) {
                 return <strong key={i}>{part.slice(2, -2)}</strong>;
+            }
+            if (part === '\n') {
+                return <br key={i} />;
             }
             return part;
         });
@@ -31,7 +34,7 @@ const ChatMessage: React.FC<{ message: Message }> = ({ message }) => {
                     <SparklesIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
                 </div>
             )}
-            <div className={`max-w-lg p-4 rounded-2xl ${isUser ? 'bg-blue-500 text-white rounded-br-none' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'}`}>
+            <div className={`max-w-xl p-4 rounded-2xl ${isUser ? 'bg-blue-500 text-white rounded-br-none' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'}`}>
                 <div className="text-sm leading-relaxed prose prose-gray dark:prose-invert max-w-none">{renderText(message.text)}</div>
                 {message.sources && message.sources.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
@@ -58,7 +61,7 @@ const ChatMessage: React.FC<{ message: Message }> = ({ message }) => {
     );
 };
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onSendMessage, isLoading, articleTitle }) => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onSendMessage, isLoading, articleTitle, onMenuClick }) => {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -78,9 +81,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onSendMessage,
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
-      <header className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold truncate text-gray-900 dark:text-white">{articleTitle}</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">AI-Assisted Discussion</p>
+      <header className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <button onClick={onMenuClick} className="md:hidden text-gray-500 hover:text-gray-800 dark:hover:text-gray-200" aria-label="Open sidebar">
+          <MenuIcon className="h-6 w-6" />
+        </button>
+        <div>
+          <h2 className="text-lg font-semibold truncate text-gray-900 dark:text-white">{articleTitle}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Assignment Discussion</p>
+        </div>
       </header>
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.map((msg, index) => (
@@ -102,7 +110,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onSendMessage,
         )}
         <div ref={messagesEndRef} />
       </div>
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <form onSubmit={handleSubmit} className="flex items-center gap-4">
           <input
             type="text"
