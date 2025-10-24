@@ -2,10 +2,13 @@
 nixPkgs = ["nodejs_20", "openssl"]
 
 [phases.install]
-cmds = ["npm install"]
+cmds = ["npm install --legacy-peer-deps"]
 
 [phases.build]
 cmds = ["npm run build", "npx prisma generate"]
 
 [start]
 cmd = "npx prisma migrate deploy && npm run start"
+
+[variables]
+NPM_CONFIG_UPDATE_NOTIFIER = "false"
