@@ -148,13 +148,22 @@ export const ProfessorDashboard: React.FC = () => {
         {/* Actions */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Assignments</h2>
-          <button
-            onClick={handleCreateAssignment}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Create Assignment
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate('/professor/articles')}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+            >
+              <BookOpenIcon className="h-5 w-5" />
+              Manage Articles
+            </button>
+            <button
+              onClick={handleCreateAssignment}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Create Assignment
+            </button>
+          </div>
         </div>
 
         {/* Assignments List */}

@@ -61,6 +61,18 @@ export const articleAPI = {
     const response = await api.get('/articles');
     return response.data;
   },
+
+  create: async (data: {
+    title: string;
+    author?: string;
+    year?: number;
+    content: string;
+    learningObjectives: string[];
+    keyConcepts: string[];
+  }): Promise<Article> => {
+    const response = await api.post('/articles', data);
+    return response.data;
+  },
 };
 
 export const assignmentAPI = {
@@ -76,6 +88,17 @@ export const assignmentAPI = {
 
   getById: async (id: string): Promise<any> => {
     const response = await api.get(`/assignments/${id}`);
+    return response.data;
+  },
+
+  create: async (data: {
+    articleId: string;
+    title: string;
+    description?: string;
+    dueDate?: string;
+    gradingRubric?: any;
+  }): Promise<Assignment> => {
+    const response = await api.post('/assignments', data);
     return response.data;
   },
 

@@ -8,6 +8,7 @@ import { StudentDashboard } from './src/pages/student/Dashboard';
 import { AssignmentPage } from './src/pages/student/Assignment';
 import { ProfessorDashboard } from './src/pages/professor/Dashboard';
 import { AssignmentDetails } from './src/pages/professor/AssignmentDetails';
+import { ArticlesPage } from './src/pages/professor/Articles';
 
 const App: React.FC = () => {
   return (
@@ -42,6 +43,14 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute requireRole="professor">
                 <ProfessorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/professor/articles"
+            element={
+              <ProtectedRoute requireRole="professor">
+                <ArticlesPage />
               </ProtectedRoute>
             }
           />
