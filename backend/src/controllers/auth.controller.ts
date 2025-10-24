@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { AuthResponse } from '../../../shared/types';
+import { AuthResponse } from '../types';
 
 const prisma = new PrismaClient();
 

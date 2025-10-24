@@ -41,7 +41,7 @@ export const createAssignment = async (req: AuthRequest, res: Response) => {
         title: data.title,
         description: data.description || null,
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
-        gradingRubric: data.gradingRubric || null,
+        gradingRubric: data.gradingRubric ? (data.gradingRubric as any) : null,
       },
       include: {
         article: true,

@@ -75,7 +75,7 @@ export async function sendMessageToGemini(
     const sources = result.candidates?.[0]?.groundingMetadata?.groundingChunks;
 
     return {
-      text: result.text,
+      text: result.text || "I'm having trouble processing that. Could you rephrase?",
       sources: sources?.map(chunk => chunk.web).filter(Boolean)
     };
   } catch (error) {
@@ -133,6 +133,9 @@ export async function processUploadedArticle(text: string): Promise<Omit<any, 'i
       }
     });
 
+    if (!response.text) {
+      throw new Error('No response from Gemini API');
+    }
     const metadata = JSON.parse(response.text);
     return metadata;
 

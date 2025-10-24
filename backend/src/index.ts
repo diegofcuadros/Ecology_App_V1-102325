@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3001;
 
 // Determine allowed origins based on environment
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.FRONTEND_URL, 'https://*.vercel.app']
+  ? [process.env.FRONTEND_URL || 'https://temp.com', 'https://*.vercel.app']
   : ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
 // Middleware
@@ -22,7 +22,7 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.some(allowed => origin.includes(allowed.replace('*', '')))) {
+    if (allowedOrigins.some(allowed => allowed && origin.includes(allowed.replace('*', '')))) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
