@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, requireRole } from '../middleware/auth';
+import { authenticateToken, requireRole } from '../middleware/auth.js';
 import {
   createAssignment,
   getProfessorAssignments,
@@ -8,7 +8,7 @@ import {
   updateAssignment,
   deleteAssignment,
   getAssignmentStats,
-} from '../controllers/assignment.controller';
+} from '../controllers/assignment.controller.js';
 
 const router = Router();
 

@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import authRoutes from './routes/auth.routes';
-import assignmentRoutes from './routes/assignment.routes';
-import articleRoutes from './routes/article.routes';
-import chatRoutes from './routes/chat.routes';
+import authRoutes from './routes/auth.routes.js';
+import assignmentRoutes from './routes/assignment.routes.js';
+import articleRoutes from './routes/article.routes.js';
+import chatRoutes from './routes/chat.routes.js';
 
 dotenv.config();
 

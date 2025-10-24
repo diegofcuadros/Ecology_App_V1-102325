@@ -1,8 +1,8 @@
 import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { AuthRequest } from '../middleware/auth';
-import { processUploadedArticle } from '../services/gemini.service';
+import { AuthRequest } from '../middleware/auth.js';
+import { processUploadedArticle } from '../services/gemini.service.js';
 
 const prisma = new PrismaClient();
 
